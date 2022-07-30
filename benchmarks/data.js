@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1659197467103,
+  "lastUpdate": 1659197469232,
   "repoUrl": "https://github.com/zenomri/opentelemetry-cpp",
   "entries": {
     "OpenTelemetry-cpp api Benchmark": [
@@ -3574,6 +3574,54 @@ window.BENCHMARK_DATA = {
             "value": 1727450.5271647323,
             "unit": "ns/iter",
             "extra": "iterations: 433\ncpu: 298624.48036951496 ns\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "owentou@tencent.com",
+            "name": "WenTao Ou",
+            "username": "owent"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "59e7496f94a0e1c3f8daa087dd3571c81ad5f92c",
+          "message": "Upgrade `instrumentation_library_metrics` to `scope_metrics` (#1507)\n\n* Upgrade `instrumentation_library_metrics` to `scope_metrics`\r\n\r\nSigned-off-by: owentou <owentou@tencent.com>\r\n\r\n* Rename `InstrumentationLibrary` -> `InstrumentationScope`\r\n\r\nSigned-off-by: owentou <owentou@tencent.com>\r\n\r\n* Fix style\r\n\r\nSigned-off-by: owentou <owentou@tencent.com>\r\n\r\n* Fix compiling\r\n\r\nSigned-off-by: owentou <owentou@tencent.com>\r\n\r\n* Remove duplicated `ElasticSearchRecordable::SetInstrumentationLibrary`\r\n\r\nSigned-off-by: owentou <owentou@tencent.com>\r\n\r\n* Fix comments\r\n\r\nSigned-off-by: owentou <owentou@tencent.com>\r\n\r\n* Update the usage of `instrumentation_library` of prometheus exporter.\r\n\r\nSigned-off-by: owentou <owentou@tencent.com>",
+          "timestamp": "2022-07-30T03:42:15-07:00",
+          "tree_id": "e64249c08ca531b43d80c562e8601bfcb4a09f95",
+          "url": "https://github.com/zenomri/opentelemetry-cpp/commit/59e7496f94a0e1c3f8daa087dd3571c81ad5f92c"
+        },
+        "date": 1659197466586,
+        "tool": "googlecpp",
+        "benches": [
+          {
+            "name": "BM_OtlpExporterEmptySpans",
+            "value": 133.2238385586743,
+            "unit": "ns/iter",
+            "extra": "iterations: 1079000\ncpu: 133.18016682113068 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_OtlpExporterSparseSpans",
+            "value": 197.50976037059604,
+            "unit": "ns/iter",
+            "extra": "iterations: 726000\ncpu: 196.98622589531684 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_OtlpExporterDenseSpans",
+            "value": 944.9606488464744,
+            "unit": "ns/iter",
+            "extra": "iterations: 157000\ncpu: 943.4248407643314 ns\nthreads: 1"
+          },
+          {
+            "name": "BM_otlp_grpc_with_collector",
+            "value": 2298429.9717879877,
+            "unit": "ns/iter",
+            "extra": "iterations: 328\ncpu: 417950.6097560975 ns\nthreads: 1"
           }
         ]
       }
