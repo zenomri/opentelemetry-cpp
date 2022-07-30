@@ -74,22 +74,26 @@ TEST(OstreamLogExporter, DefaultLogRecordToCout)
   // Restore cout's original stringstream
   std::cout.rdbuf(original);
 
-  std::string expectedOutput =
+  std::vector<std::string> expected_output{
       "{\n"
       "  timestamp     : 0\n"
       "  severity_num  : 0\n"
       "  severity_text : INVALID\n"
-      "  name          : \n"
-      "  body          : \n"
-      "  resource      : {{telemetry.sdk.version: " OPENTELEMETRY_VERSION
-      "}, {telemetry.sdk.name: opentelemetry}, {telemetry.sdk.language: cpp}}\n"
-      "  attributes    : {}\n"
+      "  body          : \n",
+      "  resource      : \n",
+      "telemetry.sdk.version: " OPENTELEMETRY_VERSION "\n",
+      "telemetry.sdk.name: opentelemetry\n",
+      "telemetry.sdk.language: cpp\n",
+      "  attributes    : \n"
       "  trace_id      : 00000000000000000000000000000000\n"
       "  span_id       : 0000000000000000\n"
       "  trace_flags   : 00\n"
-      "}\n";
+      "}\n"};
 
-  ASSERT_EQ(output.str(), expectedOutput);
+  for (auto &expected : expected_output)
+  {
+    ASSERT_NE(output.str().find(expected), std::string::npos);
+  }
 }
 
 // Testing what a log record with only the "timestamp", "severity", "name" and "message" fields set,
@@ -112,7 +116,6 @@ TEST(OStreamLogExporter, SimpleLogToCout)
   auto record = std::unique_ptr<sdklogs::Recordable>(new sdklogs::LogRecord());
   record->SetTimestamp(now);
   record->SetSeverity(logs_api::Severity::kTrace);  // kTrace has enum value of 1
-  record->SetName("Name");
   record->SetBody("Message");
 
   // Log a record to cout
@@ -121,24 +124,28 @@ TEST(OStreamLogExporter, SimpleLogToCout)
   // Reset cout's original stringstream buffer
   std::cout.rdbuf(original);
 
-  std::string expectedOutput =
+  std::vector<std::string> expected_output{
       "{\n"
       "  timestamp     : " +
-      std::to_string(now.time_since_epoch().count()) +
-      "\n"
-      "  severity_num  : 1\n"
-      "  severity_text : TRACE\n"
-      "  name          : Name\n"
-      "  body          : Message\n"
-      "  resource      : {{telemetry.sdk.version: " OPENTELEMETRY_VERSION
-      "}, {telemetry.sdk.name: opentelemetry}, "
-      "{telemetry.sdk.language: cpp}}\n"
-      "  attributes    : {}\n"
+          std::to_string(now.time_since_epoch().count()) +
+          "\n"
+          "  severity_num  : 1\n"
+          "  severity_text : TRACE\n"
+          "  body          : Message\n",
+      "  resource      : \n",
+      "telemetry.sdk.version: " OPENTELEMETRY_VERSION "\n",
+      "telemetry.sdk.name: opentelemetry\n",
+      "telemetry.sdk.language: cpp\n",
+      "  attributes    : \n"
       "  trace_id      : 00000000000000000000000000000000\n"
       "  span_id       : 0000000000000000\n"
       "  trace_flags   : 00\n"
-      "}\n";
-  ASSERT_EQ(output.str(), expectedOutput);
+      "}\n"};
+
+  for (auto &expected : expected_output)
+  {
+    ASSERT_NE(output.str().find(expected), std::string::npos);
+  }
 }
 
 // ---------------------------------- Print to cerr --------------------------
@@ -172,26 +179,29 @@ TEST(OStreamLogExporter, LogWithStringAttributesToCerr)
   // Reset cerr's original stringstream buffer
   std::cerr.rdbuf(original);
 
-  std::string expectedOutput =
+  std::vector<std::string> expected_output{
       "{\n"
       "  timestamp     : 0\n"
       "  severity_num  : 0\n"
       "  severity_text : INVALID\n"
-      "  name          : \n"
-      "  body          : \n"
-      "  resource      : {{telemetry.sdk.version: " OPENTELEMETRY_VERSION
-      "}, {telemetry.sdk.name: opentelemetry}, {telemetry.sdk.language: cpp}, {service.name: "
-      "unknown_service}, {key1: val1}}\n"
-      "  attributes    : {{a: 1}}\n"
+      "  body          : \n",
+      "  resource      : \n",
+      "telemetry.sdk.version: " OPENTELEMETRY_VERSION "\n",
+      "telemetry.sdk.name: opentelemetry\n",
+      "telemetry.sdk.language: cpp\n",
+      "service.name: unknown_service\n",
+      "key1: val1\n",
+      "  attributes    : \n",
+      "\ta: 1\n",
       "  trace_id      : 00000000000000000000000000000000\n"
       "  span_id       : 0000000000000000\n"
       "  trace_flags   : 00\n"
-      "}\n";
-// TODO this test fails on Mac
-// issue https://github.com/open-telemetry/opentelemetry-cpp/issues/1187
-#  if !defined(__APPLE__)
-  ASSERT_EQ(stdcerrOutput.str(), expectedOutput);
-#  endif
+      "}\n"};
+
+  for (auto &expected : expected_output)
+  {
+    ASSERT_NE(stdcerrOutput.str().find(expected), std::string::npos);
+  }
 }
 
 // ---------------------------------- Print to clog -------------------------
@@ -231,26 +241,29 @@ TEST(OStreamLogExporter, LogWithVariantTypesToClog)
   // Reset clog's original stringstream buffer
   std::clog.rdbuf(original);
 
-  std::string expectedOutput =
+  std::vector<std::string> expected_output{
       "{\n"
       "  timestamp     : 0\n"
       "  severity_num  : 0\n"
       "  severity_text : INVALID\n"
-      "  name          : \n"
-      "  body          : \n"
-      "  resource      : {{service.name: unknown_service}, "
-      "{telemetry.sdk.version: " OPENTELEMETRY_VERSION
-      "}, {telemetry.sdk.name: opentelemetry}, {telemetry.sdk.language: cpp}, {res1: [1, 2, 3]}}\n"
-      "  attributes    : {{attr1: [0, 1, 0]}}\n"
+      "  body          : \n",
+      "  resource      : \n",
+      "service.name: unknown_service\n",
+      "telemetry.sdk.version: " OPENTELEMETRY_VERSION "\n",
+      "telemetry.sdk.name: opentelemetry\n",
+      "telemetry.sdk.language: cpp\n",
+      "res1: [1,2,3]\n",
+      "attributes    : \n",
+      "\tattr1: [0,1,0]\n"
       "  trace_id      : 00000000000000000000000000000000\n"
       "  span_id       : 0000000000000000\n"
       "  trace_flags   : 00\n"
-      "}\n";
-// TODO this test fails on Mac
-// issue https://github.com/open-telemetry/opentelemetry-cpp/issues/1187
-#  if !defined(__APPLE__)
-  ASSERT_EQ(stdclogOutput.str(), expectedOutput);
-#  endif
+      "}\n"};
+
+  for (auto &expected : expected_output)
+  {
+    ASSERT_NE(stdclogOutput.str().find(expected), std::string::npos);
+  }
 }
 
 // // ---------------------------------- Integration Tests -------------------------
@@ -267,7 +280,7 @@ TEST(OStreamLogExporter, IntegrationTest)
   auto apiProvider = nostd::shared_ptr<logs_api::LoggerProvider>(sdkProvider);
   auto provider    = nostd::shared_ptr<logs_api::LoggerProvider>(apiProvider);
   logs_api::Provider::SetLoggerProvider(provider);
-  const std::string schema_url{"https://opentelemetry.io/schemas/1.2.0"};
+  const std::string schema_url{"https://opentelemetry.io/schemas/1.11.0"};
   auto logger = logs_api::Provider::GetLoggerProvider()->GetLogger(
       "Logger", "", "opentelelemtry_library", "", schema_url);
 
@@ -280,34 +293,35 @@ TEST(OStreamLogExporter, IntegrationTest)
 
   // Write a log to ostream exporter
   common::SystemTimestamp now(std::chrono::system_clock::now());
-  logger->Log(logs_api::Severity::kDebug, "", "Hello", {}, {}, {}, {}, now);
+  logger->Log(logs_api::Severity::kDebug, "Hello", {}, {}, {}, {}, now);
 
   // Restore cout's original streambuf
   std::cout.rdbuf(original);
 
   // Compare actual vs expected outputs
-  std::string expectedOutput =
+  std::vector<std::string> expected_output{
       "{\n"
       "  timestamp     : " +
-      std::to_string(now.time_since_epoch().count()) +
-      "\n"
-      "  severity_num  : 5\n"
-      "  severity_text : DEBUG\n"
-      "  name          : \n"
-      "  body          : Hello\n"
-      "  resource      : {{service.name: unknown_service}, "
-      "{telemetry.sdk.version: " OPENTELEMETRY_VERSION
-      "}, {telemetry.sdk.name: opentelemetry}, {telemetry.sdk.language: cpp}}\n"
-      "  attributes    : {}\n"
+          std::to_string(now.time_since_epoch().count()) +
+          "\n"
+          "  severity_num  : 5\n"
+          "  severity_text : DEBUG\n"
+          "  body          : Hello\n",
+      "  resource      : \n",
+      "telemetry.sdk.version: " OPENTELEMETRY_VERSION "\n",
+      "service.name: unknown_service\n",
+      "telemetry.sdk.name: opentelemetry\n",
+      "telemetry.sdk.language: cpp\n",
+      "  attributes    : \n"
       "  trace_id      : 00000000000000000000000000000000\n"
       "  span_id       : 0000000000000000\n"
       "  trace_flags   : 00\n"
-      "}\n";
-// TODO this test fails on Mac
-// issue https://github.com/open-telemetry/opentelemetry-cpp/issues/1187
-#  if !defined(__APPLE__)
-  ASSERT_EQ(stdcoutOutput.str(), expectedOutput);
-#  endif
+      "}\n"};
+
+  for (auto &expected : expected_output)
+  {
+    ASSERT_NE(stdcoutOutput.str().find(expected), std::string::npos);
+  }
 }
 
 }  // namespace logs

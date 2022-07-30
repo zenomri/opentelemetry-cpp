@@ -4,8 +4,9 @@
 #pragma once
 #ifdef ENABLE_LOGS_PREVIEW
 
+#  include "opentelemetry/common/macros.h"
 #  include "opentelemetry/logs/logger.h"
-#  include "opentelemetry/sdk/instrumentationlibrary/instrumentation_library.h"
+#  include "opentelemetry/sdk/instrumentationscope/instrumentation_scope.h"
 #  include "opentelemetry/sdk/logs/logger_context.h"
 #  include "opentelemetry/sdk/logs/logger_provider.h"
 
@@ -29,8 +30,8 @@ public:
   explicit Logger(
       opentelemetry::nostd::string_view name,
       std::shared_ptr<LoggerContext> context,
-      std::unique_ptr<instrumentationlibrary::InstrumentationLibrary> instrumentation_library =
-          instrumentationlibrary::InstrumentationLibrary::Create("")) noexcept;
+      std::unique_ptr<instrumentationscope::InstrumentationScope> instrumentation_scope =
+          instrumentationscope::InstrumentationScope::Create("")) noexcept;
 
   /**
    * Returns the name of this logger.
@@ -40,7 +41,6 @@ public:
   /**
    * Writes a log record into the processor.
    * @param severity the severity level of the log event.
-   * @param name the name of the log event.
    * @param message the string message of the log (perhaps support std::fmt or fmt-lib format).
    * with the log event.
    * @param attributes the attributes, stored as a 2D list of key/value pairs, that are associated
@@ -51,7 +51,6 @@ public:
    * @param timestamp the timestamp the log record was created.
    * @throws No exceptions under any circumstances.   */
   void Log(opentelemetry::logs::Severity severity,
-           nostd::string_view name,
            nostd::string_view body,
            const opentelemetry::common::KeyValueIterable &attributes,
            opentelemetry::trace::TraceId trace_id,
@@ -59,17 +58,25 @@ public:
            opentelemetry::trace::TraceFlags trace_flags,
            opentelemetry::common::SystemTimestamp timestamp) noexcept override;
 
-  /** Returns the associated instruementation library */
-  const opentelemetry::sdk::instrumentationlibrary::InstrumentationLibrary &
-  GetInstrumentationLibrary() const noexcept;
+  /** Returns the associated instrumentation scope */
+  const opentelemetry::sdk::instrumentationscope::InstrumentationScope &GetInstrumentationScope()
+      const noexcept;
+
+  OPENTELEMETRY_DEPRECATED_MESSAGE("Please use GetInstrumentationScope instead")
+  const opentelemetry::sdk::instrumentationscope::InstrumentationScope &GetInstrumentationLibrary()
+      const noexcept
+  {
+    return GetInstrumentationScope();
+  }
 
 private:
   // The name of this logger
   std::string logger_name_;
 
-  // The logger context of this Logger. Uses a weak_ptr to avoid cyclic dependency issues the with
-  std::weak_ptr<LoggerContext> context_;
-  std::unique_ptr<instrumentationlibrary::InstrumentationLibrary> instrumentation_library_;
+  // order of declaration is important here - instrumentation scope should destroy after
+  // logger-context.
+  std::unique_ptr<instrumentationscope::InstrumentationScope> instrumentation_scope_;
+  std::shared_ptr<LoggerContext> context_;
 };
 
 }  // namespace logs

@@ -36,6 +36,17 @@ TracerProvider::TracerProvider(std::vector<std::unique_ptr<SpanProcessor>> &&pro
                                              std::move(id_generator));
 }
 
+TracerProvider::~TracerProvider()
+{
+  // Tracer hold the shared pointer to the context. So we can not use destructor of TracerContext to
+  // Shutdown and flush all pending recordables when we have more than one tracers.These recordables
+  // may use the raw pointer of instrumentation_scope_ in Tracer
+  if (context_)
+  {
+    context_->Shutdown();
+  }
+}
+
 nostd::shared_ptr<trace_api::Tracer> TracerProvider::GetTracer(
     nostd::string_view library_name,
     nostd::string_view library_version,
@@ -55,14 +66,14 @@ nostd::shared_ptr<trace_api::Tracer> TracerProvider::GetTracer(
 
   for (auto &tracer : tracers_)
   {
-    auto &tracer_lib = tracer->GetInstrumentationLibrary();
+    auto &tracer_lib = tracer->GetInstrumentationScope();
     if (tracer_lib.equal(library_name, library_version, schema_url))
     {
       return nostd::shared_ptr<trace_api::Tracer>{tracer};
     }
   }
 
-  auto lib = InstrumentationLibrary::Create(library_name, library_version, schema_url);
+  auto lib = InstrumentationScope::Create(library_name, library_version, schema_url);
   tracers_.push_back(std::shared_ptr<opentelemetry::sdk::trace::Tracer>(
       new sdk::trace::Tracer(context_, std::move(lib))));
   return nostd::shared_ptr<trace_api::Tracer>{tracers_.back()};

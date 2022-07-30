@@ -377,7 +377,7 @@ public:
       const opentelemetry::trace::SpanContextKeyValueIterable &links,
       const opentelemetry::trace::StartSpanOptions &options = {}) noexcept override
   {
-#ifdef RTTI_ENABLED
+#ifdef OPENTELEMETRY_RTTI_ENABLED
     common::KeyValueIterable &attribs = const_cast<common::KeyValueIterable &>(attributes);
     Properties *evt                   = dynamic_cast<Properties *>(&attribs);
     if (evt != nullptr)
@@ -531,7 +531,7 @@ public:
                 common::SystemTimestamp timestamp,
                 const common::KeyValueIterable &attributes) noexcept
   {
-#ifdef RTTI_ENABLED
+#ifdef OPENTELEMETRY_RTTI_ENABLED
     common::KeyValueIterable &attribs = const_cast<common::KeyValueIterable &>(attributes);
     Properties *evt                   = dynamic_cast<Properties *>(&attribs);
     if (evt != nullptr)
@@ -761,10 +761,10 @@ public:
        const opentelemetry::trace::StartSpanOptions &options,
        Span *parent = nullptr) noexcept
       : opentelemetry::trace::Span(),
+        start_time_(std::chrono::system_clock::now()),
         owner_(owner),
         parent_(parent),
-        context_(CreateContext()),
-        start_time_(std::chrono::system_clock::now())
+        context_(CreateContext())
   {
     name_ = name;
     UNREFERENCED_PARAMETER(options);
@@ -980,7 +980,7 @@ public:
   nostd::shared_ptr<opentelemetry::trace::Tracer> GetTracer(
       nostd::string_view name,
       nostd::string_view args       = "",
-      nostd::string_view schema_url = "") override
+      nostd::string_view schema_url = "") noexcept override
   {
     UNREFERENCED_PARAMETER(args);
     UNREFERENCED_PARAMETER(schema_url);

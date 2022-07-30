@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "opentelemetry/exporters/ostream/span_exporter.h"
+#include "opentelemetry/exporters/ostream/common_utils.h"
+
 #include <iostream>
 #include <mutex>
 #include "opentelemetry/sdk_config.h"
@@ -88,7 +90,7 @@ sdk::common::ExportResult OStreamSpanExporter::Export(
       sout_ << "\n  resources     : ";
       printResources(span->GetResource());
       sout_ << "\n  instr-lib     : ";
-      printInstrumentationLibrary(span->GetInstrumentationLibrary());
+      printInstrumentationScope(span->GetInstrumentationScope());
       sout_ << "\n}\n";
     }
   }
@@ -115,7 +117,7 @@ void OStreamSpanExporter::printAttributes(
   for (const auto &kv : map)
   {
     sout_ << prefix << kv.first << ": ";
-    print_value(kv.second);
+    opentelemetry::exporter::ostream_common::print_value(kv.second, sout_);
   }
 }
 
@@ -159,12 +161,11 @@ void OStreamSpanExporter::printResources(const opentelemetry::sdk::resource::Res
   }
 }
 
-void OStreamSpanExporter::printInstrumentationLibrary(
-    const opentelemetry::sdk::instrumentationlibrary::InstrumentationLibrary
-        &instrumentation_library)
+void OStreamSpanExporter::printInstrumentationScope(
+    const opentelemetry::sdk::instrumentationscope::InstrumentationScope &instrumentation_scope)
 {
-  sout_ << instrumentation_library.GetName();
-  auto version = instrumentation_library.GetVersion();
+  sout_ << instrumentation_scope.GetName();
+  auto version = instrumentation_scope.GetVersion();
   if (version.size())
   {
     sout_ << "-" << version;

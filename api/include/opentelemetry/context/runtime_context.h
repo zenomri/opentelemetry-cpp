@@ -22,8 +22,6 @@ public:
 private:
   friend class RuntimeContextStorage;
 
-  Token() noexcept = default;
-
   // A constructor that sets the token's Context object to the
   // one that was passed in.
   Token(const Context &context) : context_(context) {}
@@ -150,6 +148,18 @@ public:
     GetStorage() = storage;
   }
 
+  /**
+   * Provide a pointer to const runtime context storage.
+   *
+   * The returned pointer can only be used for extending the lifetime of the runtime context
+   * storage.
+   *
+   */
+  static nostd::shared_ptr<const RuntimeContextStorage> GetConstRuntimeContextStorage() noexcept
+  {
+    return GetRuntimeContextStorage();
+  }
+
 private:
   static nostd::shared_ptr<RuntimeContextStorage> GetRuntimeContextStorage() noexcept
   {
@@ -163,7 +173,7 @@ private:
   }
 };
 
-inline Token::~Token()
+inline Token::~Token() noexcept
 {
   context::RuntimeContext::Detach(*this);
 }

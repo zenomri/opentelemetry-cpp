@@ -55,7 +55,7 @@ inline std::string LevelToString(LogLevel level)
 class LogHandler
 {
 public:
-  virtual ~LogHandler() = default;
+  virtual ~LogHandler();
 
   virtual void Handle(LogLevel level,
                       const char *file,
@@ -71,22 +71,7 @@ public:
               const char *file,
               int line,
               const char *msg,
-              const sdk::common::AttributeMap &attributes) noexcept override
-  {
-    std::stringstream output_s;
-    output_s << "[" << LevelToString(level) << "] ";
-    if (file != nullptr)
-    {
-      output_s << "File: " << file << ":" << line;
-    }
-    if (msg != nullptr)
-    {
-      output_s << msg;
-    }
-    output_s << std::endl;
-    // TBD - print attributes
-    std::cout << output_s.str();  // thread safe.
-  }
+              const sdk::common::AttributeMap &attributes) noexcept override;
 };
 
 class NoopLogHandler : public LogHandler
@@ -96,10 +81,7 @@ public:
               const char *file,
               int line,
               const char *msg,
-              const sdk::common::AttributeMap &error_attributes) noexcept override
-  {
-    // ignore the log message
-  }
+              const sdk::common::AttributeMap &error_attributes) noexcept override;
 };
 
 /**
@@ -113,7 +95,7 @@ public:
    *
    * By default, a default LogHandler is returned.
    */
-  static const nostd::shared_ptr<LogHandler> &GetLogHandler() noexcept
+  static inline const nostd::shared_ptr<LogHandler> &GetLogHandler() noexcept
   {
     return GetHandlerAndLevel().first;
   }
@@ -123,7 +105,7 @@ public:
    * This should be called once at the start of application before creating any Provider
    * instance.
    */
-  static void SetLogHandler(nostd::shared_ptr<LogHandler> eh) noexcept
+  static inline void SetLogHandler(nostd::shared_ptr<LogHandler> eh) noexcept
   {
     GetHandlerAndLevel().first = eh;
   }
@@ -133,22 +115,17 @@ public:
    *
    * By default, a default log level is returned.
    */
-  static LogLevel GetLogLevel() noexcept { return GetHandlerAndLevel().second; }
+  static inline LogLevel GetLogLevel() noexcept { return GetHandlerAndLevel().second; }
 
   /**
    * Changes the singleton Log level.
    * This should be called once at the start of application before creating any Provider
    * instance.
    */
-  static void SetLogLevel(LogLevel level) noexcept { GetHandlerAndLevel().second = level; }
+  static inline void SetLogLevel(LogLevel level) noexcept { GetHandlerAndLevel().second = level; }
 
 private:
-  static std::pair<nostd::shared_ptr<LogHandler>, LogLevel> &GetHandlerAndLevel() noexcept
-  {
-    static std::pair<nostd::shared_ptr<LogHandler>, LogLevel> handler_and_level{
-        nostd::shared_ptr<LogHandler>(new DefaultLogHandler), LogLevel::Warning};
-    return handler_and_level;
-  }
+  static std::pair<nostd::shared_ptr<LogHandler>, LogLevel> &GetHandlerAndLevel() noexcept;
 };
 
 }  // namespace internal_log
@@ -236,9 +213,9 @@ OPENTELEMETRY_END_NAMESPACE
 #  define OTEL_INTERNAL_LOG_INFO_2_ARGS(message, attributes)                                      \
     OTEL_INTERNAL_LOG_DISPATCH(opentelemetry::sdk::common::internal_log::LogLevel::Info, message, \
                                attributes)
-#  define OTEL_INTERNAL_LOG_INFO_MACRO(...)                                    \
-    OTEL_INTERNAL_LOG_GET_3RD_ARG(__VA_ARGS__, OTEL_INTERNAL_LOG_ERROR_2_ARGS, \
-                                  OTEL_INTERNAL_LOG_ERROR_1_ARGS)
+#  define OTEL_INTERNAL_LOG_INFO_MACRO(...)                                   \
+    OTEL_INTERNAL_LOG_GET_3RD_ARG(__VA_ARGS__, OTEL_INTERNAL_LOG_INFO_2_ARGS, \
+                                  OTEL_INTERNAL_LOG_INFO_1_ARGS)
 #  define OTEL_INTERNAL_LOG_INFO(...) OTEL_INTERNAL_LOG_INFO_MACRO(__VA_ARGS__)(__VA_ARGS__)
 #else
 #  define OTEL_INTERNAL_LOG_INFO(...)

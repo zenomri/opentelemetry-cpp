@@ -3,7 +3,7 @@
 
 #include "opentelemetry/exporters/jaeger/recordable.h"
 #include "opentelemetry/sdk/common/global_log_handler.h"
-#include "opentelemetry/sdk/resource/experimental_semantic_conventions.h"
+#include "opentelemetry/sdk/resource/semantic_conventions.h"
 
 OPENTELEMETRY_BEGIN_NAMESPACE
 namespace exporter
@@ -190,18 +190,44 @@ void JaegerRecordable::AddEvent(nostd::string_view name,
   logs_.push_back(log);
 }
 
-void JaegerRecordable::SetInstrumentationLibrary(
-    const opentelemetry::sdk::instrumentationlibrary::InstrumentationLibrary
-        &instrumentation_library) noexcept
+void JaegerRecordable::SetInstrumentationScope(
+    const opentelemetry::sdk::instrumentationscope::InstrumentationScope
+        &instrumentation_scope) noexcept
 {
-  AddTag("otel.library.name", instrumentation_library.GetName(), tags_);
-  AddTag("otel.library.version", instrumentation_library.GetVersion(), tags_);
+  AddTag("otel.library.name", instrumentation_scope.GetName(), tags_);
+  AddTag("otel.library.version", instrumentation_scope.GetVersion(), tags_);
 }
 
 void JaegerRecordable::AddLink(const trace::SpanContext &span_context,
                                const common::KeyValueIterable &attributes) noexcept
 {
-  // TODO: convert link to SpanRefernece
+  // Note: "The Link’s attributes cannot be represented in Jaeger explicitly."
+  // -- https://opentelemetry.io/docs/reference/specification/trace/sdk_exporters/jaeger/#links
+  //
+  // This implementation does not (currently) implement the optional conversion to span logs.
+
+  thrift::SpanRef reference;
+
+  reference.__set_refType(thrift::SpanRefType::FOLLOWS_FROM);
+
+  // IDs should be converted to big endian before transmission.
+  // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/sdk_exporters/jaeger.md#ids
+#if JAEGER_IS_LITTLE_ENDIAN == 1
+  reference.__set_traceIdHigh(
+      otel_bswap_64(*(reinterpret_cast<const int64_t *>(span_context.trace_id().Id().data()))));
+  reference.__set_traceIdLow(
+      otel_bswap_64(*(reinterpret_cast<const int64_t *>(span_context.trace_id().Id().data()) + 1)));
+  reference.__set_spanId(
+      otel_bswap_64(*(reinterpret_cast<const int64_t *>(span_context.span_id().Id().data()))));
+#else
+  reference.__set_traceIdLow(
+      *(reinterpret_cast<const int64_t *>(span_context.trace_id().Id().data())));
+  reference.__set_traceIdHigh(
+      *(reinterpret_cast<const int64_t *>(span_context.trace_id().Id().data()) + 1));
+  reference.__set_spanId(*(reinterpret_cast<const int64_t *>(span_context.span_id().Id().data())));
+#endif
+
+  references_.push_back(reference);
 }
 
 void JaegerRecordable::SetStatus(trace::StatusCode code, nostd::string_view description) noexcept

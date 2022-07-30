@@ -10,6 +10,7 @@
 #  include <unordered_map>
 
 #  include "nlohmann/json.hpp"
+#  include "opentelemetry/common/macros.h"
 #  include "opentelemetry/sdk/common/attribute_utils.h"
 #  include "opentelemetry/sdk/logs/recordable.h"
 #  include "opentelemetry/version.h"
@@ -111,9 +112,8 @@ public:
   void SetSeverity(opentelemetry::logs::Severity severity) noexcept override
   {
     // Convert the severity enum to a string
-    int severity_index = static_cast<int>(severity);
-    if (severity_index < 0 ||
-        severity_index >= std::extent<decltype(opentelemetry::logs::SeverityNumToText)>::value)
+    std::uint32_t severity_index = static_cast<std::uint32_t>(severity);
+    if (severity_index >= std::extent<decltype(opentelemetry::logs::SeverityNumToText)>::value)
     {
       std::stringstream sout;
       sout << "Invalid severity(" << severity_index << ")";
@@ -124,12 +124,6 @@ public:
       json_["severity"] = opentelemetry::logs::SeverityNumToText[severity_index];
     }
   }
-
-  /**
-   * Set name for this log
-   * @param name the name to set
-   */
-  void SetName(nostd::string_view name) noexcept override { json_["name"] = name.data(); }
 
   /**
    * Set body field for this log.
@@ -208,26 +202,34 @@ public:
   nlohmann::json GetJSON() noexcept { return json_; }
 
   /**
-   * Set instrumentation_library for this log.
-   * @param instrumentation_library the instrumentation library to set
+   * Set instrumentation_scope for this log.
+   * @param instrumentation_scope the instrumentation scope to set
    */
-  void SetInstrumentationLibrary(
-      const opentelemetry::sdk::instrumentationlibrary::InstrumentationLibrary
-          &instrumentation_library) noexcept
+  void SetInstrumentationScope(const opentelemetry::sdk::instrumentationscope::InstrumentationScope
+                                   &instrumentation_scope) noexcept override
   {
-    instrumentation_library_ = &instrumentation_library;
+    json_["name"]          = instrumentation_scope.GetName();
+    instrumentation_scope_ = &instrumentation_scope;
   }
 
   /** Returns the associated instruementation library */
-  const opentelemetry::sdk::instrumentationlibrary::InstrumentationLibrary &
-  GetInstrumentationLibrary() const noexcept
+  OPENTELEMETRY_DEPRECATED_MESSAGE("Please use GetInstrumentationScope instead")
+  const opentelemetry::sdk::instrumentationscope::InstrumentationScope &GetInstrumentationLibrary()
+      const noexcept
   {
-    return *instrumentation_library_;
+    return GetInstrumentationScope();
+  }
+
+  /** Returns the associated instruementation library */
+  const opentelemetry::sdk::instrumentationscope::InstrumentationScope &GetInstrumentationScope()
+      const noexcept
+  {
+    return *instrumentation_scope_;
   }
 
 private:
-  const opentelemetry::sdk::instrumentationlibrary::InstrumentationLibrary
-      *instrumentation_library_ = nullptr;
+  const opentelemetry::sdk::instrumentationscope::InstrumentationScope *instrumentation_scope_ =
+      nullptr;
 };
 }  // namespace logs
 }  // namespace exporter

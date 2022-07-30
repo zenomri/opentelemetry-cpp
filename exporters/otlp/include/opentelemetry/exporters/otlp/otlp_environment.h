@@ -53,7 +53,7 @@ inline const std::string GetOtlpDefaultHttpEndpoint()
   return endpoint.size() ? endpoint : kOtlpEndpointDefault;
 }
 
-inline const bool GetOtlpDefaultIsSslEnable()
+inline bool GetOtlpDefaultIsSslEnable()
 {
   constexpr char kOtlpTracesIsSslEnableEnv[] = "OTEL_EXPORTER_OTLP_TRACES_SSL_ENABLE";
   constexpr char kOtlpIsSslEnableEnv[]       = "OTEL_EXPORTER_OTLP_SSL_ENABLE";
@@ -263,6 +263,52 @@ inline OtlpHeaders GetOtlpDefaultLogHeaders()
 
   log_remove_cache.clear();
   DumpOtlpHeaders(result, kOtlpLogsHeadersEnv, log_remove_cache);
+
+  return result;
+}
+
+inline const std::string GetOtlpDefaultHttpMetricEndpoint()
+{
+  constexpr char kOtlpMetricsEndpointEnv[] = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT";
+  constexpr char kOtlpEndpointEnv[]        = "OTEL_EXPORTER_OTLP_ENDPOINT";
+  constexpr char kOtlpEndpointDefault[]    = "http://localhost:4318/v1/metrics";
+
+  auto endpoint = opentelemetry::sdk::common::GetEnvironmentVariable(kOtlpMetricsEndpointEnv);
+  if (endpoint.empty())
+  {
+    endpoint = opentelemetry::sdk::common::GetEnvironmentVariable(kOtlpEndpointEnv);
+    if (!endpoint.empty())
+    {
+      endpoint += "/v1/metrics";
+    }
+  }
+  return endpoint.size() ? endpoint : kOtlpEndpointDefault;
+}
+
+inline const std::chrono::system_clock::duration GetOtlpDefaultMetricTimeout()
+{
+  constexpr char kOtlpMetricsTimeoutEnv[] = "OTEL_EXPORTER_OTLP_METRICS_TIMEOUT";
+  constexpr char kOtlpTimeoutEnv[]        = "OTEL_EXPORTER_OTLP_TIMEOUT";
+
+  auto timeout = opentelemetry::sdk::common::GetEnvironmentVariable(kOtlpMetricsTimeoutEnv);
+  if (timeout.empty())
+  {
+    timeout = opentelemetry::sdk::common::GetEnvironmentVariable(kOtlpTimeoutEnv);
+  }
+  return GetOtlpTimeoutFromString(timeout.c_str());
+}
+
+inline OtlpHeaders GetOtlpDefaultMetricHeaders()
+{
+  constexpr char kOtlpMetricsHeadersEnv[] = "OTEL_EXPORTER_OTLP_METRICS_HEADERS";
+  constexpr char kOtlpHeadersEnv[]        = "OTEL_EXPORTER_OTLP_HEADERS";
+
+  OtlpHeaders result;
+  std::unordered_set<std::string> metric_remove_cache;
+  DumpOtlpHeaders(result, kOtlpHeadersEnv, metric_remove_cache);
+
+  metric_remove_cache.clear();
+  DumpOtlpHeaders(result, kOtlpMetricsHeadersEnv, metric_remove_cache);
 
   return result;
 }

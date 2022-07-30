@@ -9,6 +9,7 @@
 
 #  include <gtest/gtest.h>
 #  include <chrono>
+#  include <memory>
 #  include <thread>
 
 using namespace opentelemetry::sdk::logs;
@@ -110,7 +111,7 @@ TEST_F(BatchLogProcessorTest, TestShutdown)
   for (int i = 0; i < num_logs; ++i)
   {
     auto log = batch_processor->MakeRecordable();
-    log->SetName("Log" + std::to_string(i));
+    log->SetBody("Log" + std::to_string(i));
     batch_processor->OnReceive(std::move(log));
   }
 
@@ -118,13 +119,15 @@ TEST_F(BatchLogProcessorTest, TestShutdown)
   // current batch of logs to be sent to the log exporter
   // by checking the number of logs sent and the names of the logs sent
   EXPECT_EQ(true, batch_processor->Shutdown());
+  // It's safe to shutdown again
+  EXPECT_TRUE(batch_processor->Shutdown());
 
   EXPECT_EQ(num_logs, logs_received->size());
 
   // Assume logs are received by exporter in same order as sent by processor
   for (int i = 0; i < num_logs; ++i)
   {
-    EXPECT_EQ("Log" + std::to_string(i), logs_received->at(i)->GetName());
+    EXPECT_EQ("Log" + std::to_string(i), logs_received->at(i)->GetBody());
   }
 
   // Also check that the processor is shut down at the end
@@ -143,7 +146,7 @@ TEST_F(BatchLogProcessorTest, TestForceFlush)
   for (int i = 0; i < num_logs; ++i)
   {
     auto log = batch_processor->MakeRecordable();
-    log->SetName("Log" + std::to_string(i));
+    log->SetBody("Log" + std::to_string(i));
     batch_processor->OnReceive(std::move(log));
   }
 
@@ -152,14 +155,14 @@ TEST_F(BatchLogProcessorTest, TestForceFlush)
   EXPECT_EQ(num_logs, logs_received->size());
   for (int i = 0; i < num_logs; ++i)
   {
-    EXPECT_EQ("Log" + std::to_string(i), logs_received->at(i)->GetName());
+    EXPECT_EQ("Log" + std::to_string(i), logs_received->at(i)->GetBody());
   }
 
   // Create some more logs to make sure that the processor still works
   for (int i = 0; i < num_logs; ++i)
   {
     auto log = batch_processor->MakeRecordable();
-    log->SetName("Log" + std::to_string(i));
+    log->SetBody("Log" + std::to_string(i));
     batch_processor->OnReceive(std::move(log));
   }
 
@@ -168,7 +171,7 @@ TEST_F(BatchLogProcessorTest, TestForceFlush)
   EXPECT_EQ(num_logs * 2, logs_received->size());
   for (int i = 0; i < num_logs * 2; ++i)
   {
-    EXPECT_EQ("Log" + std::to_string(i % num_logs), logs_received->at(i)->GetName());
+    EXPECT_EQ("Log" + std::to_string(i % num_logs), logs_received->at(i)->GetBody());
   }
 }
 
@@ -188,7 +191,7 @@ TEST_F(BatchLogProcessorTest, TestManyLogsLoss)
   for (int i = 0; i < max_queue_size; ++i)
   {
     auto log = batch_processor->MakeRecordable();
-    log->SetName("Log" + std::to_string(i));
+    log->SetBody("Log" + std::to_string(i));
     batch_processor->OnReceive(std::move(log));
   }
 
@@ -212,7 +215,7 @@ TEST_F(BatchLogProcessorTest, TestManyLogsLossLess)
   for (int i = 0; i < num_logs; ++i)
   {
     auto log = batch_processor->MakeRecordable();
-    log->SetName("Log" + std::to_string(i));
+    log->SetBody("Log" + std::to_string(i));
     batch_processor->OnReceive(std::move(log));
   }
 
@@ -221,7 +224,7 @@ TEST_F(BatchLogProcessorTest, TestManyLogsLossLess)
   EXPECT_EQ(num_logs, logs_received->size());
   for (int i = 0; i < num_logs; ++i)
   {
-    EXPECT_EQ("Log" + std::to_string(i), logs_received->at(i)->GetName());
+    EXPECT_EQ("Log" + std::to_string(i), logs_received->at(i)->GetBody());
   }
 }
 
@@ -245,7 +248,7 @@ TEST_F(BatchLogProcessorTest, TestScheduledDelayMillis)
   for (std::size_t i = 0; i < max_export_batch_size; ++i)
   {
     auto log = batch_processor->MakeRecordable();
-    log->SetName("Log" + std::to_string(i));
+    log->SetBody("Log" + std::to_string(i));
     batch_processor->OnReceive(std::move(log));
   }
   // Sleep for scheduled_delay_millis milliseconds
@@ -261,7 +264,7 @@ TEST_F(BatchLogProcessorTest, TestScheduledDelayMillis)
   EXPECT_EQ(max_export_batch_size, logs_received->size());
   for (size_t i = 0; i < max_export_batch_size; ++i)
   {
-    EXPECT_EQ("Log" + std::to_string(i), logs_received->at(i)->GetName());
+    EXPECT_EQ("Log" + std::to_string(i), logs_received->at(i)->GetBody());
   }
 }
 #endif

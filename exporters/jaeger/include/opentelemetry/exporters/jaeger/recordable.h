@@ -58,6 +58,7 @@ public:
   std::vector<thrift::Tag> Tags() noexcept { return std::move(tags_); }
   std::vector<thrift::Tag> ResourceTags() noexcept { return std::move(resource_tags_); }
   std::vector<thrift::Log> Logs() noexcept { return std::move(logs_); }
+  std::vector<thrift::SpanRef> References() noexcept { return std::move(references_); }
   const std::string &ServiceName() const noexcept { return service_name_; }
 
   void SetIdentity(const opentelemetry::trace::SpanContext &span_context,
@@ -85,9 +86,8 @@ public:
 
   void SetDuration(std::chrono::nanoseconds duration) noexcept override;
 
-  void SetInstrumentationLibrary(
-      const opentelemetry::sdk::instrumentationlibrary::InstrumentationLibrary
-          &instrumentation_library) noexcept override;
+  void SetInstrumentationScope(const opentelemetry::sdk::instrumentationscope::InstrumentationScope
+                                   &instrumentation_scope) noexcept override;
 
 private:
   void AddTag(const std::string &key, const std::string &value, std::vector<thrift::Tag> &tags);
@@ -109,6 +109,7 @@ private:
   std::vector<thrift::Tag> tags_;
   std::vector<thrift::Tag> resource_tags_;
   std::vector<thrift::Log> logs_;
+  std::vector<thrift::SpanRef> references_;
   std::string service_name_;
 };
 

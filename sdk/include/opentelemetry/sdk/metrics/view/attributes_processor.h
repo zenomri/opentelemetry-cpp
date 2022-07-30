@@ -22,7 +22,8 @@ public:
   // Process the metric instrument attributes.
   // @returns The processed attributes
   virtual MetricAttributes process(
-      const opentelemetry::common::KeyValueIterable &attributes) noexcept = 0;
+      const opentelemetry::common::KeyValueIterable &attributes) const noexcept = 0;
+  virtual ~AttributesProcessor()                                                = default;
 };
 
 /**
@@ -33,7 +34,7 @@ public:
 class DefaultAttributesProcessor : public AttributesProcessor
 {
   MetricAttributes process(
-      const opentelemetry::common::KeyValueIterable &attributes) noexcept override
+      const opentelemetry::common::KeyValueIterable &attributes) const noexcept override
   {
     MetricAttributes result(attributes);
     return result;
@@ -54,7 +55,7 @@ public:
   {}
 
   MetricAttributes process(
-      const opentelemetry::common::KeyValueIterable &attributes) noexcept override
+      const opentelemetry::common::KeyValueIterable &attributes) const noexcept override
   {
     MetricAttributes result;
     attributes.ForEachKeyValue(

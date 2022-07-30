@@ -62,6 +62,8 @@ else()
     set(ARCH mips)
   elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(riscv.*|RISCV.*)")
     set(ARCH riscv)
+  elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(s390x.*|S390X.*)")
+    set(ARCH s390x)
   else()
     message(
       FATAL_ERROR
@@ -123,24 +125,11 @@ if(NOT DEFINED CMAKE_CXX_STANDARD)
   endif()
 endif()
 
-if(WITH_ABSEIL)
-  find_package(absl CONFIG REQUIRED)
-
-  set(CORE_RUNTIME_LIBS absl::bad_variant_access absl::any absl::base
-                        absl::bits absl::city)
-
-  # target_link_libraries(main PRIVATE absl::any absl::base absl::bits
-  # absl::city)
-endif()
-
 if(WITH_STL)
   # These definitions are needed for test projects that do not link against
   # opentelemetry-api library directly. We ensure that variant implementation
   # (absl::variant or std::variant) in variant unit test code is consistent with
-  # the global project build definitions.
-  add_definitions(-DHAVE_CPP_STDLIB)
-
-  # Optimize for speed to reduce the hops
+  # the global project build definitions. Optimize for speed to reduce the hops
   if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     if(CMAKE_BUILD_TYPE MATCHES Debug)
       # Turn off optimizations for DEBUG
@@ -152,20 +141,6 @@ if(WITH_STL)
       endif()
     endif()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_CXX_OPT_FLAG}")
-  endif()
-endif()
-
-if(WITH_GSL)
-  add_definitions(-DHAVE_GSL)
-
-  # Guidelines Support Library path. Used if we are not on not get C++20.
-  #
-  find_package(Microsoft.GSL QUIET)
-  if(TARGET Microsoft.GSL::GSL)
-    list(APPEND CORE_RUNTIME_LIBS Microsoft.GSL::GSL)
-  else()
-    set(GSL_DIR third_party/ms-gsl)
-    include_directories(${GSL_DIR}/include)
   endif()
 endif()
 
@@ -188,12 +163,7 @@ option(BUILD_TESTING "Whether to enable tests" ON)
 
 option(BUILD_W3CTRACECONTEXT_TEST "Whether to build w3c trace context" OFF)
 
-if(WITH_NO_GENENV)
-  add_definitions(-DNO_GETENV)
-endif()
-
 if(WIN32)
-  add_definitions(-DNOMINMAX)
   if(BUILD_TESTING)
     if(MSVC)
       # GTest bug: https://github.com/google/googletest/issues/860
@@ -201,10 +171,12 @@ if(WIN32)
     endif()
   endif()
   option(WITH_ETW "Whether to include the ETW Exporter in the SDK" ON)
-  if(WITH_ETW)
-    add_definitions(-DHAVE_MSGPACK)
-  endif(WITH_ETW)
 endif(WIN32)
+
+# Do not convert deprecated message to error
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+  add_compile_options(-Wno-error=deprecated-declarations)
+endif()
 
 option(
   WITH_API_ONLY
@@ -213,16 +185,8 @@ option(
 option(WITH_EXAMPLES "Whether to build examples" ON)
 
 option(WITH_METRICS_PREVIEW "Whether to build metrics preview" OFF)
-
-if(WITH_METRICS_PREVIEW)
-  add_definitions(-DENABLE_METRICS_PREVIEW)
-endif()
-
 option(WITH_LOGS_PREVIEW "Whether to build logs preview" OFF)
-
-if(WITH_LOGS_PREVIEW)
-  add_definitions(-DENABLE_LOGS_PREVIEW)
-endif()
+option(WITH_ASYNC_EXPORT_PREVIEW "Whether enable async export" OFF)
 
 find_package(Threads)
 
@@ -275,48 +239,15 @@ endif()
 # GNUInstallDirs.
 include(GNUInstallDirs)
 
-if((NOT WITH_API_ONLY)
-   AND (WITH_ELASTICSEARCH
-        OR WITH_ZIPKIN
-        OR WITH_OTLP
-        OR WITH_OTLP_HTTP
-        OR WITH_ZPAGES
-        OR BUILD_W3CTRACECONTEXT_TEST
-        OR WITH_ETW
-       ))
-  # nlohmann_json package is required for most SDK build configurations
-  find_package(nlohmann_json QUIET)
-  set(nlohmann_json_clone FALSE)
-  if(nlohmann_json_FOUND)
-    message("Using external nlohmann::json")
-  elseif(EXISTS ${PROJECT_SOURCE_DIR}/.git
-         AND EXISTS
-             ${PROJECT_SOURCE_DIR}/third_party/nlohmann-json/CMakeLists.txt)
-    message("Trying to use local nlohmann::json from submodule")
-    set(JSON_BuildTests
-        OFF
-        CACHE INTERNAL "")
-    set(JSON_Install
-        ON
-        CACHE INTERNAL "")
-    # This option allows to link nlohmann_json::nlohmann_json target
-    add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/nlohmann-json)
-    # This option allows to add header to include directories
-    include_directories(
-      ${PROJECT_SOURCE_DIR}/third_party/nlohmann-json/single_include)
-  else()
-    set(nlohmann_json_clone TRUE)
-    include(cmake/nlohmann-json.cmake)
-    message("\nnlohmann_json package was not found. Cloning from github")
-  endif()
-endif()
-
 if(WITH_PROMETHEUS)
   find_package(prometheus-cpp CONFIG QUIET)
   if(NOT prometheus-cpp_FOUND)
     message("Trying to use local prometheus-cpp from submodule")
     if(EXISTS ${PROJECT_SOURCE_DIR}/third_party/prometheus-cpp/.git)
+      set(SAVED_ENABLE_TESTING ${ENABLE_TESTING})
+      set(ENABLE_TESTING OFF)
       add_subdirectory(third_party/prometheus-cpp)
+      set(ENABLE_TESTING ${SAVED_ENABLE_TESTING})
     else()
       message(
         FATAL_ERROR
@@ -386,10 +317,49 @@ if(WITH_OTLP)
   include(cmake/opentelemetry-proto.cmake)
 endif()
 
+if(WITH_ELASTICSEARCH
+   OR WITH_ZIPKIN
+   OR WITH_OTLP_HTTP
+   OR WITH_ZPAGES
+   OR BUILD_W3CTRACECONTEXT_TEST
+   OR WITH_ETW)
+  set(USE_NLOHMANN_JSON ON)
+else()
+  set(USE_NLOHMANN_JSON OFF)
+endif()
+if((NOT WITH_API_ONLY) AND USE_NLOHMANN_JSON)
+  # nlohmann_json package is required for most SDK build configurations
+  find_package(nlohmann_json QUIET)
+  set(nlohmann_json_clone FALSE)
+  if(nlohmann_json_FOUND)
+    message("Using external nlohmann::json")
+  elseif(EXISTS ${PROJECT_SOURCE_DIR}/.git
+         AND EXISTS
+             ${PROJECT_SOURCE_DIR}/third_party/nlohmann-json/CMakeLists.txt)
+    message("Trying to use local nlohmann::json from submodule")
+    set(JSON_BuildTests
+        OFF
+        CACHE INTERNAL "")
+    set(JSON_Install
+        ON
+        CACHE INTERNAL "")
+    # This option allows to link nlohmann_json::nlohmann_json target
+    add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/nlohmann-json)
+    # This option allows to add header to include directories
+    include_directories(
+      ${PROJECT_SOURCE_DIR}/third_party/nlohmann-json/single_include)
+  else()
+    set(nlohmann_json_clone TRUE)
+    include(cmake/nlohmann-json.cmake)
+    message("\nnlohmann_json package was not found. Cloning from github")
+  endif()
+endif()
+
 list(APPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}")
 
 include(CTest)
 if(BUILD_TESTING)
+  add_definitions(-DENABLE_TEST)
   if(EXISTS ${CMAKE_BINARY_DIR}/lib/libgtest.a)
     # Prefer GTest from build tree. GTest is not always working with
     # CMAKE_PREFIX_PATH
@@ -402,7 +372,7 @@ if(BUILD_TESTING)
         ${CMAKE_BINARY_DIR}/lib/libgmock.a)
   elseif(WIN32)
     # Make sure we are always bootsrapped with vcpkg on Windows
-    find_package(GTest)
+    find_package(GTest REQUIRED)
     if(NOT (GTEST_FOUND OR GTest_FOUND))
       install_windows_deps()
       find_package(GTest REQUIRED)
@@ -426,6 +396,7 @@ include_directories(api/include)
 add_subdirectory(api)
 
 if(NOT WITH_API_ONLY)
+  set(BUILD_TESTING ${BUILD_TESTING})
   include_directories(sdk/include)
   include_directories(sdk)
   include_directories(ext/include)

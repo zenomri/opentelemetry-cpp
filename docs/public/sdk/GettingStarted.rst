@@ -50,15 +50,15 @@ OpenTelemetry offers six tracing exporters out of the box:
     opentelemetry::exporter::jaeger::JaegerExporterOptions opts;
     opts.transport_format  = opentelemetry::exporter::jaeger::TransportFormat::kThriftHttp;
     opts.endpoint = "localhost";
-    opts.server_port =  6831;
+    opts.server_port = 14268;
     opts.headers = {{}}; // optional headers
-    auto jaeger_udp_exporter =
+    auto jaeger_http_exporter =
         std::unique_ptr<sdktrace::SpanExporter>(new opentelemetry::exporter::jaeger::JaegerExporter(opts));
 
 
     // otlp grpc exporter
     opentelemetry::exporter::otlp::OtlpGrpcExporterOptions opts;
-    opts.endpoint = "localhost::4317";
+    opts.endpoint = "localhost:4317";
     opts.use_ssl_credentials = true;
     opts.ssl_credentials_cacert_as_string = "ssl-certificate";
     auto otlp_grpc_exporter =
@@ -107,8 +107,8 @@ The OpenTelemetry C++ SDK allow for creation of Resources and for associating th
 
     auto resource_attributes = opentelemetry::sdk::resource::ResourceAttributes
         {
-            {"service.name": "shoppingcart"},
-            {"service.instance.id": "instance-12"}
+            {"service.name", "shoppingcart"},
+            {"service.instance.id", "instance-12"}
         };
     auto resource = opentelemetry::sdk::resource::Resource::Create(resource_attributes);
     auto received_attributes = resource.GetAttributes();
@@ -136,18 +136,21 @@ OpenTelemetry C++ SDK  offers four samplers out of the box:
 .. code:: cpp
 
     //AlwaysOnSampler
-    opentelemetry::sdk::trace::AlwaysOnSampler always_on_sampler;
+    auto always_on_sampler = std::unique_ptr<sdktrace::AlwaysOnSampler>
+        (new sdktrace::AlwaysOnSampler);
 
     //AlwaysOffSampler
-    opentelemetry::sdk::trace::AlwaysOffSampler always_off_sampler;
+    auto always_off_sampler = std::unique_ptr<sdktrace::AlwaysOffSampler>
+        (new sdktrace::AlwaysOffSampler);
 
     //ParentBasedSampler
-    opentelemetry::sdk::trace::ParentBasedSampler sampler_off(std::make_shared<AlwaysOffSampler>());
+    auto parent_based_sampler = std::unique_ptr<sdktrace::ParentBasedSampler>
+        (new sdktrace::ParentBasedSampler);
 
     //TraceIdRatioBasedSampler - Sample 50% generated spans
     double ratio       = 0.5;
-    opentelemetry::sdk::trace::TraceIdRatioBasedSampler s(ratio);
-
+    auto always_off_sampler = std::unique_ptr<sdktrace::TraceIdRatioBasedSampler>
+        (new sdktrace::TraceIdRatioBasedSampler(ratio));
 
 TracerContext
 ^^^^^^^^^^^^^
@@ -172,11 +175,12 @@ There are two different mechanisms to create TraceProvider instance
 .. code:: cpp
 
     // Created using `TracerContext` instance
-    auto tracer_provider = sdktrace::TracerProvider(tracer_context);
+    auto tracer_provider = nostd::shared_ptr<sdktrace::TracerProvider>
+        (new sdktrace::TracerProvider(tracer_context));
 
     // Create using SDK configurations as parameter
-    auto tracer_provider =
-        sdktrace::TracerProvider(std::move(simple_processor), resource, std::move(always_on_sampler));
+    auto tracer_provider = nostd::shared_ptr<sdktrace::TracerProvider>
+        (std::move(simple_processor), resource, std::move(always_on_sampler));
 
     // set the global tracer TraceProvider
     opentelemetry::trace::Provider::SetTracerProvider(tracer_provider);

@@ -3,8 +3,11 @@
 
 #ifdef ENABLE_LOGS_PREVIEW
 
+#  include "opentelemetry/common/macros.h"
+
 #  include "opentelemetry/exporters/otlp/otlp_log_recordable.h"
 
+#  include "opentelemetry/exporters/otlp/otlp_populate_attribute_utils.h"
 #  include "opentelemetry/exporters/otlp/otlp_recordable_utils.h"
 
 namespace nostd = opentelemetry::nostd;
@@ -20,11 +23,11 @@ proto::resource::v1::Resource OtlpLogRecordable::ProtoResource() const noexcept
   proto::resource::v1::Resource proto;
   if (nullptr == resource_)
   {
-    OtlpRecordableUtils::PopulateAttribute(&proto, sdk::resource::Resource::GetDefault());
+    OtlpPopulateAttributeUtils::PopulateAttribute(&proto, sdk::resource::Resource::GetDefault());
   }
   else
   {
-    OtlpRecordableUtils::PopulateAttribute(&proto, *resource_);
+    OtlpPopulateAttributeUtils::PopulateAttribute(&proto, *resource_);
   }
 
   return proto;
@@ -167,11 +170,6 @@ void OtlpLogRecordable::SetSeverity(opentelemetry::logs::Severity severity) noex
   }
 }
 
-void OtlpLogRecordable::SetName(nostd::string_view name) noexcept
-{
-  log_record_.set_name(name.data(), name.size());
-}
-
 void OtlpLogRecordable::SetBody(nostd::string_view message) noexcept
 {
   log_record_.mutable_body()->set_string_value(message.data(), message.size());
@@ -182,10 +180,17 @@ void OtlpLogRecordable::SetResource(const opentelemetry::sdk::resource::Resource
   resource_ = &resource;
 }
 
+const opentelemetry::sdk::resource::Resource &OtlpLogRecordable::GetResource() const noexcept
+{
+  OPENTELEMETRY_LIKELY_IF(nullptr != resource_) { return *resource_; }
+
+  return opentelemetry::sdk::resource::Resource::GetDefault();
+}
+
 void OtlpLogRecordable::SetAttribute(nostd::string_view key,
                                      const opentelemetry::common::AttributeValue &value) noexcept
 {
-  OtlpRecordableUtils::PopulateAttribute(log_record_.add_attributes(), key, value);
+  OtlpPopulateAttributeUtils::PopulateAttribute(log_record_.add_attributes(), key, value);
 }
 
 void OtlpLogRecordable::SetTraceId(opentelemetry::trace::TraceId trace_id) noexcept
@@ -205,17 +210,24 @@ void OtlpLogRecordable::SetTraceFlags(opentelemetry::trace::TraceFlags trace_fla
   log_record_.set_flags(trace_flags.flags());
 }
 
-void OtlpLogRecordable::SetInstrumentationLibrary(
-    const opentelemetry::sdk::instrumentationlibrary::InstrumentationLibrary
-        &instrumentation_library) noexcept
+void OtlpLogRecordable::SetInstrumentationScope(
+    const opentelemetry::sdk::instrumentationscope::InstrumentationScope
+        &instrumentation_scope) noexcept
 {
-  instrumentation_library_ = &instrumentation_library;
+  instrumentation_scope_ = &instrumentation_scope;
 }
 
-const opentelemetry::sdk::instrumentationlibrary::InstrumentationLibrary &
-OtlpLogRecordable::GetInstrumentationLibrary() const noexcept
+const opentelemetry::sdk::instrumentationscope::InstrumentationScope &
+OtlpLogRecordable::GetInstrumentationScope() const noexcept
 {
-  return *instrumentation_library_;
+  OPENTELEMETRY_LIKELY_IF(nullptr != instrumentation_scope_) { return *instrumentation_scope_; }
+
+  static opentelemetry::nostd::unique_ptr<
+      opentelemetry::sdk::instrumentationscope::InstrumentationScope>
+      default_instrumentation =
+          opentelemetry::sdk::instrumentationscope::InstrumentationScope::Create(
+              "default", "1.0.0", "https://opentelemetry.io/schemas/1.11.0");
+  return *default_instrumentation;
 }
 }  // namespace otlp
 }  // namespace exporter

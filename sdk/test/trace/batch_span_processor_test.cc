@@ -7,6 +7,8 @@
 
 #include <gtest/gtest.h>
 #include <chrono>
+#include <list>
+#include <memory>
 #include <thread>
 
 OPENTELEMETRY_BEGIN_NAMESPACE
@@ -118,6 +120,8 @@ TEST_F(BatchSpanProcessorTestPeer, TestShutdown)
     batch_processor->OnEnd(std::move(test_spans->at(i)));
   }
 
+  EXPECT_TRUE(batch_processor->Shutdown());
+  // It's safe to shutdown again
   EXPECT_TRUE(batch_processor->Shutdown());
 
   EXPECT_EQ(num_spans, spans_received->size());

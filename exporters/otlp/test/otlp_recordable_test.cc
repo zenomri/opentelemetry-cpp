@@ -14,6 +14,8 @@ namespace trace_sdk = opentelemetry::sdk::trace;
 namespace resource  = opentelemetry::sdk::resource;
 namespace proto     = opentelemetry::proto;
 
+namespace trace_sdk_2 = opentelemetry::sdk::trace;
+
 TEST(OtlpRecordable, SetIdentity)
 {
   constexpr uint8_t trace_id_buf[]       = {1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8};
@@ -49,13 +51,6 @@ TEST(OtlpRecordable, SetIdentity)
   EXPECT_EQ(rec_invalid_parent.span().parent_span_id(), std::string{});
 }
 
-TEST(OtlpRecordable, SetName)
-{
-  OtlpRecordable rec;
-  nostd::string_view name = "Test Span";
-  rec.SetName(name);
-  EXPECT_EQ(rec.span().name(), name);
-}
 TEST(OtlpRecordable, SetSpanKind)
 {
   OtlpRecordable rec;
@@ -64,12 +59,12 @@ TEST(OtlpRecordable, SetSpanKind)
   EXPECT_EQ(rec.span().kind(), proto::trace::v1::Span_SpanKind::Span_SpanKind_SPAN_KIND_SERVER);
 }
 
-TEST(OtlpRecordable, SetInstrumentationLibrary)
+TEST(OtlpRecordable, SetInstrumentationScope)
 {
   OtlpRecordable rec;
-  auto inst_lib = trace_sdk::InstrumentationLibrary::Create("test", "v1");
-  rec.SetInstrumentationLibrary(*inst_lib);
-  auto proto_instr_libr = rec.GetProtoInstrumentationLibrary();
+  auto inst_lib = trace_sdk::InstrumentationScope::Create("test", "v1");
+  rec.SetInstrumentationScope(*inst_lib);
+  auto proto_instr_libr = rec.GetProtoInstrumentationScope();
   EXPECT_EQ(proto_instr_libr.name(), inst_lib->GetName());
   EXPECT_EQ(proto_instr_libr.version(), inst_lib->GetVersion());
 }
@@ -77,9 +72,9 @@ TEST(OtlpRecordable, SetInstrumentationLibrary)
 TEST(OtlpRecordable, SetInstrumentationLibraryWithSchemaURL)
 {
   OtlpRecordable rec;
-  const std::string expected_schema_url{"https://opentelemetry.io/schemas/1.2.0"};
-  auto inst_lib = trace_sdk::InstrumentationLibrary::Create("test", "v1", expected_schema_url);
-  rec.SetInstrumentationLibrary(*inst_lib);
+  const std::string expected_schema_url{"https://opentelemetry.io/schemas/1.11.0"};
+  auto inst_lib = trace_sdk::InstrumentationScope::Create("test", "v1", expected_schema_url);
+  rec.SetInstrumentationScope(*inst_lib);
   EXPECT_EQ(expected_schema_url, rec.GetInstrumentationLibrarySchemaURL());
 }
 
@@ -220,7 +215,7 @@ TEST(OtlpRecordable, SetResourceWithSchemaURL)
   OtlpRecordable rec;
   const std::string service_name_key    = "service.name";
   const std::string service_name        = "test-otlp";
-  const std::string expected_schema_url = "https://opentelemetry.io/schemas/1.2.0";
+  const std::string expected_schema_url = "https://opentelemetry.io/schemas/1.11.0";
   auto resource =
       resource::Resource::Create({{service_name_key, service_name}}, expected_schema_url);
   rec.SetResource(resource);

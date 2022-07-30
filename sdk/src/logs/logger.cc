@@ -16,13 +16,13 @@ namespace trace_api = opentelemetry::trace;
 namespace nostd     = opentelemetry::nostd;
 namespace common    = opentelemetry::common;
 
-Logger::Logger(nostd::string_view name,
-               std::shared_ptr<LoggerContext> context,
-               std::unique_ptr<instrumentationlibrary::InstrumentationLibrary>
-                   instrumentation_library) noexcept
+Logger::Logger(
+    nostd::string_view name,
+    std::shared_ptr<LoggerContext> context,
+    std::unique_ptr<instrumentationscope::InstrumentationScope> instrumentation_scope) noexcept
     : logger_name_(std::string(name)),
-      context_(context),
-      instrumentation_library_{std::move(instrumentation_library)}
+      instrumentation_scope_(std::move(instrumentation_scope)),
+      context_(context)
 {}
 
 const nostd::string_view Logger::GetName() noexcept
@@ -36,7 +36,6 @@ const nostd::string_view Logger::GetName() noexcept
  * if the user does not specify them.
  */
 void Logger::Log(opentelemetry::logs::Severity severity,
-                 nostd::string_view name,
                  nostd::string_view body,
                  const common::KeyValueIterable &attributes,
                  trace_api::TraceId trace_id,
@@ -45,12 +44,11 @@ void Logger::Log(opentelemetry::logs::Severity severity,
                  common::SystemTimestamp timestamp) noexcept
 {
   // If this logger does not have a processor, no need to create a log record
-  auto context = context_.lock();
-  if (!context)
+  if (!context_)
   {
     return;
   }
-  auto &processor = context->GetProcessor();
+  auto &processor = context_->GetProcessor();
 
   // TODO: Sampler (should include check for minSeverity)
 
@@ -64,11 +62,10 @@ void Logger::Log(opentelemetry::logs::Severity severity,
   // Populate recordable fields
   recordable->SetTimestamp(timestamp);
   recordable->SetSeverity(severity);
-  recordable->SetName(name);
   recordable->SetBody(body);
-  recordable->SetInstrumentationLibrary(GetInstrumentationLibrary());
+  recordable->SetInstrumentationScope(GetInstrumentationScope());
 
-  recordable->SetResource(context->GetResource());
+  recordable->SetResource(context_->GetResource());
 
   attributes.ForEachKeyValue([&](nostd::string_view key, common::AttributeValue value) noexcept {
     recordable->SetAttribute(key, value);
@@ -100,7 +97,7 @@ void Logger::Log(opentelemetry::logs::Severity severity,
   }
   else if (span_context.span_id().IsValid())
   {
-    recordable->SetSpanId(span_id);
+    recordable->SetSpanId(span_context.span_id());
   }
 
   // TraceFlags
@@ -117,10 +114,10 @@ void Logger::Log(opentelemetry::logs::Severity severity,
   processor.OnReceive(std::move(recordable));
 }
 
-const opentelemetry::sdk::instrumentationlibrary::InstrumentationLibrary &
-Logger::GetInstrumentationLibrary() const noexcept
+const opentelemetry::sdk::instrumentationscope::InstrumentationScope &
+Logger::GetInstrumentationScope() const noexcept
 {
-  return *instrumentation_library_;
+  return *instrumentation_scope_;
 }
 
 }  // namespace logs

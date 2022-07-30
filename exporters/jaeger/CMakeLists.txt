@@ -11,6 +11,7 @@ set(JAEGER_THRIFT_GENCPP_SOURCES
 
 set(JAEGER_EXPORTER_SOURCES
     src/jaeger_exporter.cc
+    src/jaeger_exporter_factory.cc
     src/thrift_sender.cc
     src/udp_transport.cc
     src/recordable.cc
@@ -31,7 +32,7 @@ target_include_directories(
 
 target_link_libraries(
   opentelemetry_exporter_jaeger_trace
-  PUBLIC opentelemetry_resources http_client_curl
+  PUBLIC opentelemetry_resources opentelemetry_http_client_curl
   PRIVATE thrift::thrift)
 
 if(MSVC)
@@ -52,7 +53,7 @@ install(
 
 install(
   DIRECTORY include/opentelemetry/exporters/jaeger
-  DESTINATION include/opentelemetry/exporters/
+  DESTINATION include/opentelemetry/exporters
   FILES_MATCHING
   PATTERN "*.h"
   PATTERN "recordable.h" EXCLUDE)

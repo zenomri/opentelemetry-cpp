@@ -43,6 +43,17 @@ LoggerProvider::LoggerProvider(std::shared_ptr<sdk::logs::LoggerContext> context
     : context_{context}
 {}
 
+LoggerProvider::~LoggerProvider()
+{
+  // Logger hold the shared pointer to the context. So we can not use destructor of LoggerContext to
+  // Shutdown and flush all pending recordables when we hasve more than one loggers.These
+  // recordables may use the raw pointer of instrumentation_scope_ in Logger
+  if (context_)
+  {
+    context_->Shutdown();
+  }
+}
+
 nostd::shared_ptr<opentelemetry::logs::Logger> LoggerProvider::GetLogger(
     nostd::string_view logger_name,
     nostd::string_view options,
@@ -56,7 +67,7 @@ nostd::shared_ptr<opentelemetry::logs::Logger> LoggerProvider::GetLogger(
   // If a logger with a name "logger_name" already exists, return it
   for (auto &logger : loggers_)
   {
-    auto &logger_lib = logger->GetInstrumentationLibrary();
+    auto &logger_lib = logger->GetInstrumentationScope();
     if (logger->GetName() == logger_name &&
         logger_lib.equal(library_name, library_version, schema_url))
     {
@@ -77,9 +88,19 @@ nostd::shared_ptr<opentelemetry::logs::Logger> LoggerProvider::GetLogger(
   }
   */
 
-  // If no logger with that name exists yet, create it and add it to the map of loggers
-  auto lib = instrumentationlibrary::InstrumentationLibrary::Create(library_name, library_version,
-                                                                    schema_url);
+  // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/logs/data-model.md#field-instrumentationscope
+  opentelemetry::nostd::unique_ptr<instrumentationscope::InstrumentationScope> lib;
+  if (library_name.empty())
+  {
+    lib = instrumentationscope::InstrumentationScope::Create(logger_name, library_version,
+                                                             schema_url);
+  }
+  else
+  {
+    lib = instrumentationscope::InstrumentationScope::Create(library_name, library_version,
+                                                             schema_url);
+  }
+
   loggers_.push_back(std::shared_ptr<opentelemetry::sdk::logs::Logger>(
       new Logger(logger_name, context_, std::move(lib))));
   return nostd::shared_ptr<opentelemetry::logs::Logger>{loggers_.back()};
@@ -103,6 +124,16 @@ void LoggerProvider::AddProcessor(std::unique_ptr<LogProcessor> processor) noexc
 const opentelemetry::sdk::resource::Resource &LoggerProvider::GetResource() const noexcept
 {
   return context_->GetResource();
+}
+
+bool LoggerProvider::Shutdown() noexcept
+{
+  return context_->Shutdown();
+}
+
+bool LoggerProvider::ForceFlush(std::chrono::microseconds timeout) noexcept
+{
+  return context_->ForceFlush(timeout);
 }
 
 }  // namespace logs

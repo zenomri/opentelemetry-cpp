@@ -4,15 +4,28 @@ set -e
 export DEBIAN_FRONTEND=noninteractive
 export THRIFT_VERSION=0.14.1
 
+install_dir='/usr/local/'
+while getopts ":i:" o; do
+    case "${o}" in
+        i)
+            install_dir=${OPTARG}
+            ;;
+        *)
+            ;;
+    esac
+done
+
+apt update
+
 if ! type cmake > /dev/null; then
     #cmake not installed, exiting
     exit 1
 fi
 export BUILD_DIR=/tmp/
-export INSTALL_DIR=/usr/local/
+export INSTALL_DIR=${install_dir}
 
 apt install -y --no-install-recommends \
-      libboost-all-dev \
+      libboost-locale-dev \
       libevent-dev \
       libssl-dev \
       ninja-build
@@ -38,6 +51,12 @@ cmake -G Ninja .. \
     -DBUILD_JAVA=OFF \
     -DBUILD_TESTING=OFF \
     -DBUILD_TUTORIALS=OFF \
+    -DWITH_STDTHREADS=ON \
+    -DWITH_BOOSTTHREADS=OFF \
+    -DWITH_BOOST_FUNCTIONAL=OFF \
+    -DWITH_BOOST_SMART_PTR=OFF \
+    -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR \
+    -DCMAKE_PREFIX_PATH=$INSTALL_DIR \
     ..
 
 ninja -j $(nproc)

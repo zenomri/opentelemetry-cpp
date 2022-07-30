@@ -28,10 +28,11 @@ public:
     {
       case InstrumentType::kCounter:
       case InstrumentType::kUpDownCounter:
+      case InstrumentType::kObservableCounter:
       case InstrumentType::kObservableUpDownCounter:
         return (instrument_descriptor.value_type_ == InstrumentValueType::kLong)
-                   ? std::move(std::unique_ptr<Aggregation>(new LongSumAggregation(true)))
-                   : std::move(std::unique_ptr<Aggregation>(new DoubleSumAggregation(true)));
+                   ? std::move(std::unique_ptr<Aggregation>(new LongSumAggregation()))
+                   : std::move(std::unique_ptr<Aggregation>(new DoubleSumAggregation()));
         break;
       case InstrumentType::kHistogram:
         return (instrument_descriptor.value_type_ == InstrumentValueType::kLong)
@@ -46,6 +47,96 @@ public:
       default:
         return std::move(std::unique_ptr<Aggregation>(new DropAggregation()));
     };
+  }
+
+  static std::unique_ptr<Aggregation> CreateAggregation(AggregationType aggregation_type,
+                                                        InstrumentDescriptor instrument_descriptor)
+  {
+    switch (aggregation_type)
+    {
+      case AggregationType::kDrop:
+        return std::unique_ptr<Aggregation>(new DropAggregation());
+        break;
+      case AggregationType::kHistogram:
+        if (instrument_descriptor.value_type_ == InstrumentValueType::kLong)
+        {
+          return std::unique_ptr<Aggregation>(new LongHistogramAggregation());
+        }
+        else
+        {
+          return std::unique_ptr<Aggregation>(new DoubleHistogramAggregation());
+        }
+        break;
+      case AggregationType::kLastValue:
+        if (instrument_descriptor.value_type_ == InstrumentValueType::kLong)
+        {
+          return std::unique_ptr<Aggregation>(new LongLastValueAggregation());
+        }
+        else
+        {
+          return std::unique_ptr<Aggregation>(new DoubleLastValueAggregation());
+        }
+        break;
+      case AggregationType::kSum:
+        if (instrument_descriptor.value_type_ == InstrumentValueType::kLong)
+        {
+          return std::unique_ptr<Aggregation>(new LongSumAggregation());
+        }
+        else
+        {
+          return std::unique_ptr<Aggregation>(new DoubleSumAggregation());
+        }
+        break;
+      default:
+        return DefaultAggregation::CreateAggregation(instrument_descriptor);
+    }
+  }
+
+  static std::unique_ptr<Aggregation> CloneAggregation(AggregationType aggregation_type,
+                                                       InstrumentDescriptor instrument_descriptor,
+                                                       const Aggregation &to_copy)
+  {
+    const PointType point_data = to_copy.ToPoint();
+    switch (aggregation_type)
+    {
+      case AggregationType::kDrop:
+        return std::unique_ptr<Aggregation>(new DropAggregation());
+      case AggregationType::kHistogram:
+        if (instrument_descriptor.value_type_ == InstrumentValueType::kLong)
+        {
+          return std::unique_ptr<Aggregation>(
+              new LongHistogramAggregation(nostd::get<HistogramPointData>(point_data)));
+        }
+        else
+        {
+          return std::unique_ptr<Aggregation>(
+              new DoubleHistogramAggregation(nostd::get<HistogramPointData>(point_data)));
+        }
+      case AggregationType::kLastValue:
+        if (instrument_descriptor.value_type_ == InstrumentValueType::kLong)
+        {
+          return std::unique_ptr<Aggregation>(
+              new LongLastValueAggregation(nostd::get<LastValuePointData>(point_data)));
+        }
+        else
+        {
+          return std::unique_ptr<Aggregation>(
+              new DoubleLastValueAggregation(nostd::get<LastValuePointData>(point_data)));
+        }
+      case AggregationType::kSum:
+        if (instrument_descriptor.value_type_ == InstrumentValueType::kLong)
+        {
+          return std::unique_ptr<Aggregation>(
+              new LongSumAggregation(nostd::get<SumPointData>(point_data)));
+        }
+        else
+        {
+          return std::unique_ptr<Aggregation>(
+              new DoubleSumAggregation(nostd::get<SumPointData>(point_data)));
+        }
+      default:
+        return DefaultAggregation::CreateAggregation(instrument_descriptor);
+    }
   }
 };
 

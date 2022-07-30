@@ -59,7 +59,7 @@ implementation of the `MeterProvider` into the API.
 **`GetMeter(name, version)` method must be supported**
 
 * Expects 2 string arguments:
-  * name (required): identifies the instrumentation library.
+  * name (required): identifies the instrumentation scope.
   * version (optional): specifies the version of the instrumenting library (the
     library injecting OpenTelemetry calls into the code).
 
@@ -133,7 +133,6 @@ error.**
 
 **Implementation:**
 
-<!-- markdownlint-disable MD013 -->
 ```cpp
 # meter.h / meter.cc
 class Meter : public API::Meter {
@@ -143,7 +142,7 @@ public:
   *
   * Arguments:
   * MeterProvider, the MeterProvider object that spawned this Meter.
-  * InstrumentationInfo, the name of the instrumentation library and, optionally,
+  * InstrumentationInfo, the name of the instrumentation scope and, optionally,
   *                      the version.
   *
   */
@@ -271,9 +270,7 @@ private:
   InstrumentationInfo instrumentationInfo_;
 };
 ```
-<!-- markdownlint-enable MD013 -->
 
-<!-- markdownlint-disable MD013 -->
 ```cpp
 # record.h
 /*
@@ -316,7 +313,6 @@ private:
   nostd::variant<Aggregator<short>, Aggregator<int>, Aggregator<float>, Aggregator<Double>> aggregator_;
 };
 ```
-<!-- markdownlint-enable MD013 -->
 
 Metric instruments created from this Meter class will be stored in a map (or
 another, similar container [needs to be nostd]) called “metrics.” This is

@@ -5,7 +5,7 @@
 #ifndef ENABLE_METRICS_PREVIEW
 #  include "opentelemetry/nostd/variant.h"
 #  include "opentelemetry/sdk/common/attribute_utils.h"
-#  include "opentelemetry/sdk/instrumentationlibrary/instrumentation_library.h"
+#  include "opentelemetry/sdk/instrumentationscope/instrumentation_scope.h"
 #  include "opentelemetry/sdk/metrics/data/point_data.h"
 #  include "opentelemetry/sdk/metrics/instruments.h"
 #  include "opentelemetry/sdk/resource/resource.h"
@@ -17,18 +17,24 @@ namespace sdk
 namespace metrics
 {
 
-using PointAttributes = opentelemetry::sdk::common::AttributeMap;
+using PointAttributes = opentelemetry::sdk::common::OrderedAttributeMap;
 using PointType       = opentelemetry::nostd::
     variant<SumPointData, HistogramPointData, LastValuePointData, DropPointData>;
+
+struct PointDataAttributes
+{
+  PointAttributes attributes;
+  PointType point_data;
+};
 
 class MetricData
 {
 public:
-  opentelemetry::sdk::resource::Resource *resource_;
-  opentelemetry::sdk::instrumentationlibrary::InstrumentationLibrary *instrumentation_library_;
-  PointAttributes attributes_;
   InstrumentDescriptor instrument_descriptor;
-  PointType point_data_;
+  AggregationTemporality aggregation_temporality;
+  opentelemetry::common::SystemTimestamp start_ts;
+  opentelemetry::common::SystemTimestamp end_ts;
+  std::vector<PointDataAttributes> point_data_attr_;
 };
 
 }  // namespace metrics

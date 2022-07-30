@@ -12,11 +12,7 @@ coverage:
         informational: true
         target: auto
         threshold: 10%
-    patch:
-      default:
-        informational: true
-        target: auto
-        threshold: 10%
+    patch: false
 
 parsers:
   gcov:
@@ -37,3 +33,10 @@ comment:
 # to coverage report file paths.
 fixes:
   - "/home/runner/::"
+
+ignore:
+  - "docs/**/*"
+  - "docker/**/*"
+  - "examples/**/*"
+  - "**/test/**/*"
+  - "**.md"

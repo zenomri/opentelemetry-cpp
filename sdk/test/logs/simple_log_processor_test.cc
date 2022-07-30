@@ -85,7 +85,7 @@ TEST(SimpleLogProcessorTest, SendReceivedLogsToExporter)
   for (int i = 0; i < num_logs; i++)
   {
     auto recordable = processor.MakeRecordable();
-    recordable->SetName("Log");
+    recordable->SetBody("Log Body");
     processor.OnReceive(std::move(recordable));
 
     // Verify that the batch of 1 log record sent by processor matches what exporter received
@@ -96,7 +96,7 @@ TEST(SimpleLogProcessorTest, SendReceivedLogsToExporter)
   EXPECT_EQ(logs_received->size(), num_logs);
   for (int i = 0; i < num_logs; i++)
   {
-    EXPECT_EQ("Log", logs_received->at(i)->GetName());
+    EXPECT_EQ("Log Body", logs_received->at(i)->GetBody());
   }
 }
 
@@ -116,8 +116,7 @@ TEST(SimpleLogProcessorTest, ShutdownCalledOnce)
   EXPECT_EQ(true, processor.Shutdown());
   EXPECT_EQ(1, num_shutdowns);
 
-  // The second time processor shutdown is called
-  EXPECT_EQ(false, processor.Shutdown());
+  EXPECT_EQ(true, processor.Shutdown());
   // Processor::ShutDown(), even if called more than once, should only shutdown exporter once
   EXPECT_EQ(1, num_shutdowns);
 }
@@ -149,8 +148,5 @@ TEST(SimpleLogProcessorTest, ShutDownFail)
 
   // Expect failure result when exporter fails to shutdown
   EXPECT_EQ(false, processor.Shutdown());
-
-  // Expect failure result when processor given a negative timeout allowed to shutdown
-  EXPECT_EQ(false, processor.Shutdown(std::chrono::microseconds(-1)));
 }
 #endif

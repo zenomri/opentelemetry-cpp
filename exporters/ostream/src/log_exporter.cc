@@ -4,97 +4,20 @@
 #ifdef ENABLE_LOGS_PREVIEW
 #  include "opentelemetry/exporters/ostream/log_exporter.h"
 #  include <mutex>
+#  include "opentelemetry/exporters/ostream/common_utils.h"
 #  include "opentelemetry/sdk_config.h"
 
 #  include <iostream>
 #  include <type_traits>
 
-namespace nostd   = opentelemetry::nostd;
-namespace sdklogs = opentelemetry::sdk::logs;
-
+namespace nostd     = opentelemetry::nostd;
+namespace sdklogs   = opentelemetry::sdk::logs;
+namespace sdkcommon = opentelemetry::sdk::common;
 OPENTELEMETRY_BEGIN_NAMESPACE
 namespace exporter
 {
 namespace logs
 {
-/*********************** Helper functions ************************/
-
-/*
-  print_value is used to print out the value of an attribute within a vector.
-  These values are held in a variant which makes the process of printing them much more
-  complicated.
-*/
-
-template <typename T>
-void print_value(const T &item, std::ostream &sout)
-{
-  sout << item;
-}
-
-template <typename T>
-void print_value(const std::vector<T> &vec, std::ostream &sout)
-{
-  sout << '[';
-  size_t i  = 1;
-  size_t sz = vec.size();
-  for (auto v : vec)
-  {
-    sout << v;
-    if (i != sz)
-      sout << ',' << ' ';
-    i++;
-  };
-  sout << ']';
-}
-
-// Prior to C++14, generic lambda is not available so fallback to functor.
-#  if __cplusplus < 201402L
-
-class OwnedAttributeValueVisitor
-{
-public:
-  OwnedAttributeValueVisitor(std::ostream &sout) : sout_(sout) {}
-
-  template <typename T>
-  void operator()(T &&arg)
-  {
-    print_value(arg, sout_);
-  }
-
-private:
-  // The OStream to send the logs to
-  std::ostream &sout_;
-};
-
-#  endif
-
-void print_value(sdk::common::OwnedAttributeValue &value, std::ostream &sout)
-{
-#  if __cplusplus < 201402L
-  nostd::visit(OwnedAttributeValueVisitor(sout), value);
-#  else
-  nostd::visit([&sout](auto &&arg) { print_value(arg, sout); }, value);
-#  endif
-}
-
-void printMap(std::unordered_map<std::string, sdk::common::OwnedAttributeValue> map,
-              std::ostream &sout)
-{
-  sout << "{";
-  size_t size = map.size();
-  size_t i    = 1;
-  for (auto kv : map)
-  {
-    sout << "{" << kv.first << ": ";
-    print_value(kv.second, sout);
-    sout << "}";
-
-    if (i != size)
-      sout << ", ";
-    i++;
-  }
-  sout << "}";
-}
 
 /*********************** Constructor ***********************/
 
@@ -146,12 +69,11 @@ sdk::common::ExportResult OStreamLogExporter::Export(
     // into severity_num and severity_text
     sout_ << "{\n"
           << "  timestamp     : " << log_record->GetTimestamp().time_since_epoch().count() << "\n"
-          << "  severity_num  : " << static_cast<int>(log_record->GetSeverity()) << "\n"
+          << "  severity_num  : " << static_cast<std::uint32_t>(log_record->GetSeverity()) << "\n"
           << "  severity_text : ";
 
-    int severity_index = static_cast<int>(log_record->GetSeverity());
-    if (severity_index < 0 ||
-        severity_index >= std::extent<decltype(opentelemetry::logs::SeverityNumToText)>::value)
+    std::uint32_t severity_index = static_cast<std::uint32_t>(log_record->GetSeverity());
+    if (severity_index >= std::extent<decltype(opentelemetry::logs::SeverityNumToText)>::value)
     {
       sout_ << "Invalid severity(" << severity_index << ")\n";
     }
@@ -160,16 +82,15 @@ sdk::common::ExportResult OStreamLogExporter::Export(
       sout_ << opentelemetry::logs::SeverityNumToText[severity_index] << "\n";
     }
 
-    sout_ << "  name          : " << log_record->GetName() << "\n"
-          << "  body          : " << log_record->GetBody() << "\n"
+    sout_ << "  body          : " << log_record->GetBody() << "\n"
           << "  resource      : ";
 
-    printMap(log_record->GetResource().GetAttributes(), sout_);
+    printAttributes(log_record->GetResource().GetAttributes());
 
     sout_ << "\n"
           << "  attributes    : ";
 
-    printMap(log_record->GetAttributes(), sout_);
+    printAttributes(log_record->GetAttributes());
 
     sout_ << "\n"
           << "  trace_id      : " << std::string(trace_id, trace_id_len) << "\n"
@@ -181,7 +102,7 @@ sdk::common::ExportResult OStreamLogExporter::Export(
   return sdk::common::ExportResult::kSuccess;
 }
 
-bool OStreamLogExporter::Shutdown(std::chrono::microseconds timeout) noexcept
+bool OStreamLogExporter::Shutdown(std::chrono::microseconds) noexcept
 {
   const std::lock_guard<opentelemetry::common::SpinLockMutex> locked(lock_);
   is_shutdown_ = true;
@@ -192,6 +113,17 @@ bool OStreamLogExporter::isShutdown() const noexcept
 {
   const std::lock_guard<opentelemetry::common::SpinLockMutex> locked(lock_);
   return is_shutdown_;
+}
+
+void OStreamLogExporter::printAttributes(
+    const std::unordered_map<std::string, sdkcommon::OwnedAttributeValue> &map,
+    const std::string prefix)
+{
+  for (const auto &kv : map)
+  {
+    sout_ << prefix << kv.first << ": ";
+    opentelemetry::exporter::ostream_common::print_value(kv.second, sout_);
+  }
 }
 
 }  // namespace logs

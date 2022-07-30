@@ -11,6 +11,7 @@
 #  include "opentelemetry/exporters/otlp/otlp_environment.h"
 
 #  include <chrono>
+#  include <cstddef>
 #  include <memory>
 #  include <string>
 
@@ -50,6 +51,15 @@ struct OtlpHttpLogExporterOptions
 
   // Additional HTTP headers
   OtlpHeaders http_headers = GetOtlpDefaultLogHeaders();
+
+#  ifdef ENABLE_ASYNC_EXPORT
+  // Concurrent requests
+  // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/otlp.md#otlpgrpc-concurrent-requests
+  std::size_t max_concurrent_requests = 64;
+
+  // Requests per connections
+  std::size_t max_requests_per_connection = 8;
+#  endif
 };
 
 /**
@@ -87,17 +97,23 @@ public:
    * Shutdown this exporter.
    * @param timeout The maximum time to wait for the shutdown method to return
    */
-  bool Shutdown(std::chrono::microseconds timeout = std::chrono::microseconds(0)) noexcept override;
+  bool Shutdown(
+      std::chrono::microseconds timeout = std::chrono::microseconds::max()) noexcept override;
 
 private:
-  // For testing
-  friend class OtlpHttpLogExporterTestPeer;
-
   // Configuration options for the exporter
   const OtlpHttpLogExporterOptions options_;
 
   // Object that stores the HTTP sessions that have been created
-  OtlpHttpClient http_client_;
+  std::unique_ptr<OtlpHttpClient> http_client_;
+  // For testing
+  friend class OtlpHttpLogExporterTestPeer;
+  /**
+   * Create an OtlpHttpLogExporter using the specified http client.
+   * Only tests can call this constructor directly.
+   * @param http_client the http client to be used for exporting
+   */
+  OtlpHttpLogExporter(std::unique_ptr<OtlpHttpClient> http_client);
 };
 }  // namespace otlp
 }  // namespace exporter
